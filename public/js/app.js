@@ -195,7 +195,7 @@ async function showDashboard(user) {
         if (user && user.id) {
             try {
                 console.log('[showDashboard] Kullanıcı adı eksik, sunucudan çekiliyor...');
-                const response = await fetch(`${API_URL}/users/${user.id}`, {
+                const response = await fetch(`${API_URL}/users/profile`, {
                     headers: { 'x-auth-token': localStorage.getItem('token') }
                 });
                 if (response.ok) {
