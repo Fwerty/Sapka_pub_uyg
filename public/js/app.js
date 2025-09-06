@@ -187,9 +187,28 @@ async function fetchTableCount() {
     } catch { }
 }
 
-function showDashboard(user) {
+async function showDashboard(user) {
+    console.log('[showDashboard] Gelen kullanıcı verisi:', user);
+
+    // Eğer kullanıcı objesinde username yoksa, kullanıcı bilgilerini çek
     if (!user || !user.username) {
-        console.log('[showDashboard] Kullanıcı verisi eksik, gösterim yapılmadı:', user);
+        if (user && user.id) {
+            try {
+                console.log('[showDashboard] Kullanıcı adı eksik, sunucudan çekiliyor...');
+                const response = await fetch(`${API_URL}/users/${user.id}`, {
+                    headers: { 'x-auth-token': localStorage.getItem('token') }
+                });
+                if (response.ok) {
+                    const userData = await response.json();
+                    console.log('[showDashboard] Sunucudan alınan kullanıcı verisi:', userData);
+                    // Yeni kullanıcı verisiyle fonksiyonu tekrar çağır
+                    return showDashboard(userData);
+                }
+            } catch (err) {
+                console.error('Kullanıcı bilgileri alınırken hata:', err);
+            }
+        }
+        console.log('[showDashboard] Kullanıcı verisi eksik, gösterim yapılamıyor:', user);
         return;
     }
     loginForm.classList.add('hidden');
@@ -682,6 +701,8 @@ document.getElementById('loadMoreUsersBtn').addEventListener('click', function (
 });
 
 function renderUserBox(user) {
+    // Admin kullanıcıya rol değiştirme ve silme işlemi yapılamasın
+    const isAdmin = user.role === 'admin';
     return `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
             <div class="flex items-center justify-between">
@@ -692,17 +713,16 @@ function renderUserBox(user) {
                 </div>
                 <div>
                     <select class="role-select" data-user-id="${user.id}">
-                        <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Müşteri</option>
-                        <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Personel</option>
-                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                    </select>
-                    <button class="delete-user bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Sil</button>
+                    <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Müşteri</option>
+                    <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Personel</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                </select>
+                ${isAdmin ? '' : `<button class="delete-user bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Sil</button>`}
                 </div>
             </div>
         </div>
     `;
 }
-
 
 function attachUserEventListeners() {
     document.querySelectorAll('.role-select').forEach(select => {
