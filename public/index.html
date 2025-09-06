@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Yönetim Sistemi</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-gray-100">
+    <nav style="background-color: red;" class="text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <!-- LOGO + Başlık -->
+            <div class="flex items-center space-x-2">
+                <img src="sapkapub.jpg" alt="Logo" class="w-10 h-10 rounded-full" />
+                <h1 class="text-2xl font-bold">ŞapkaPub</h1>
+            </div>
+            <!-- Kullanıcı Bilgisi -->
+            <div id="userInfo" class="hidden">
+                <span id="username"></span>
+                <button id="logoutBtn" class="ml-4 bg-red-500 px-4 py-2 rounded">Çıkış</button>
+            </div>
+        </div>
+    </nav>
+    
+
+    <main class="container mx-auto mt-8 p-4">
+        <div id="authContainer" class="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
+            <div class="relative py-3 sm:max-w-xl sm:mx-auto">
+                <div class="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
+                    <!-- Login Form -->
+                    <div id="loginForm" class="space-y-4 hidden">
+                        <h2 class="text-2xl font-bold mb-8 text-center">Giriş Yap</h2>
+                        <form id="login" class="space-y-4">
+                            <div>
+                                <input type="text" name="username" placeholder="Kullanıcı Adı" required
+                                    class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <div>
+                                <input type="password" name="password" placeholder="Şifre" required
+                                    class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                                Giriş Yap
+                            </button>
+                            <p id="loginFeedback" class="text-sm text-red-600 mt-2"></p>
+                            <p class="text-center mt-4">
+                                Hesabınız yok mu? 
+                                <a href="#" id="showRegisterLink" class="text-blue-600 hover:underline">Kayıt Ol</a>
+                            </p>
+                        </form>
+                    </div>
+
+                    <!-- Register Form -->
+                    <div id="registerForm" class="hidden space-y-4">
+                        <h2 class="text-2xl font-bold mb-8 text-center">Kayıt Ol</h2>
+                        <form id="register" class="space-y-4">
+                            <div>
+                                <input type="text" name="username" placeholder="Kullanıcı Adı" required
+                                    class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <div>
+                                <input type="password" name="password" placeholder="Şifre" required
+                                    class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+                                Kayıt Ol
+                            </button>
+                            <p class="text-center mt-4">
+                                Zaten hesabınız var mı? 
+                                <a href="#" id="showLoginLink" class="text-blue-600 hover:underline">Giriş Yap</a>
+                            </p>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Customer Dashboard -->
+                <div id="customerDashboard" class="bg-white p-6 rounded-lg shadow-md hidden">
+                    <h2 class="text-xl font-bold mb-4">Müşteri Paneli</h2>
+                    <div class="mb-4">
+                        <p>Toplam Bira Sayısı: <span id="beerCount">0</span></p>
+                        <p>Bedava Bira Hakkınız: <span id="freeBeerCount">0</span></p>
+                    </div>
+                    <!-- Sipariş Ver -->
+                    <div class="mb-4">
+                        <h3 class="font-bold mb-2">Sipariş Ver</h3>
+                        <form id="orderForm" class="space-y-4">
+                            <div>
+                                <input type="number" name="tableNumber" placeholder="Masa Numarası" required class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <div>
+                                <input type="number" name="quantity" placeholder="Bira Sayısı" required class="w-full px-3 py-2 border rounded">
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Siparişi Gönder</button>
+                        </form>
+                        <!-- Gift beer section -->
+                        <div id="giftSection" class="mt-4 hidden">
+                            <p class="mb-2 font-bold text-green-700">Tebrikler, hediye bira kazandınız!</p>
+                            <button id="useGiftBtn" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Hediye birayı şimdi kullan</button>
+                        </div>
+                    </div>
+                    <div id="beerHistory" class="mt-6">
+                        <h3 class="font-bold mb-2">Satın Alım Geçmişi</h3>
+                        <div id="beerHistoryList" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Staff Dashboard -->
+                <div id="staffDashboard" class="bg-white p-6 rounded-lg shadow-md hidden">
+                    <h2 class="text-xl font-bold mb-4">Personel Paneli</h2>
+
+                    <div id="qr-reader" style="width: 100%; max-width: 320px; margin: auto;"></div>
+                    <div id="qrResult" class="mt-4 text-center font-mono text-green-700"></div>
+                    <!-- Bekleyen Siparişler -->
+                    <div class="mt-6">
+                        <h3 class="font-bold mb-2">Bekleyen Siparişler</h3>
+                        <ul id="ordersList" class="list-disc pl-5 space-y-2"></ul>
+                    </div>
+                    <!-- Onay Bekleyen Kullanıcılar -->
+                    <div class="mt-6">
+                        <h3 class="font-bold mb-2">Onay Bekleyen Kullanıcılar</h3>
+                        <ul id="pendingUsersList" class="list-disc pl-5 space-y-2"></ul>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard -->
+                <div id="adminDashboard" class="bg-white p-6 rounded-lg shadow-md hidden col-span-2">
+                    <h2 class="text-2xl font-bold mb-6">Admin Paneli</h2>
+
+                    <!-- Kampanya Eşiği -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4">Kampanya Eşiği</h3>
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <input type="number" id="campaignThresholdInput" class="border rounded px-2 py-1" min="1" />
+                            <button id="updateCampaignThresholdBtn" class="ml-2 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">Güncelle</button>
+                            <p id="thresholdFeedback" class="mt-2 text-sm"></p>
+                        </div>
+                    </div>
+                    <!-- Masa Sayısı Ayarı -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4">Toplam Masa Sayısı</h3>
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <input type="number" id="tableCountInput" class="border rounded px-2 py-1" min="1" />
+                            <button id="updateTableCountBtn" class="ml-2 bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">Güncelle</button>
+                            <p id="tableCountFeedback" class="mt-2 text-sm"></p>
+                        </div>
+                    </div>
+                    
+                    <!-- İstatistikler -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4">Genel İstatistikler</h3>
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <p class="text-lg">Bugün Satılan Bira: <span id="beersSoldToday" class="font-bold">0</span></p>
+                            <p class="text-lg">Toplam Satılan Bira: <span id="totalBeersSold" class="font-bold">0</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Kullanıcı Yönetimi -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4">Kullanıcı Yönetimi</h3>
+                        <input id="userSearchInput" type="text" placeholder="Kullanıcı adı ara..." class="w-full mb-4 px-3 py-2 border rounded" />
+                        <div id="adminUsersList" class="space-y-4"></div>
+                        <button id="loadMoreUsersBtn" class="w-full bg-blue-600 text-white py-2 rounded mt-4 hidden">Daha fazla yükle</button>
+                    </div>
+
+                    <!-- Satın Alım Geçmişi -->
+                    <div class="mb-8">
+                        <h3 class="text-xl font-bold mb-4">Satın Alım Geçmişi</h3>
+                        <div id="adminPurchasesList"></div>
+                        <button id="loadMorePurchasesBtn" class="w-full bg-blue-600 text-white py-2 rounded mt-4 hidden">Daha fazla yükle</button>
+                    </div>
+
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="error" class="fixed top-4 right-4 bg-red-500 text-white p-4 rounded shadow-lg hidden"></div>
+    <div id="success" class="fixed top-4 right-4 bg-green-500 text-white p-4 rounded shadow-lg hidden"></div>
+
+    <script src="/js/app.js"></script>
+    <script src="/js/qrious.min.js"></script>
+    <script src="/js/html5-qrcode.min.js"></script>
+</body>
+</html>

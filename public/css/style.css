@@ -1,0 +1,122 @@
+.nav-link {
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    transition: background-color 0.2s;
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.form-error {
+    color: #dc2626;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.success-message {
+    background-color: #10b981;
+    color: white;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.error-message {
+    background-color: #dc2626;
+    color: white;
+    padding: 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.google-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.google-btn:hover {
+    background-color: #f5f5f5;
+}
+
+.google-btn img {
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 768px) {
+    #navLinks {
+        position: absolute;
+        top: 4rem;
+        right: 1rem;
+        background-color: red;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.popup-message {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    padding: 2rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    color: #1f2937;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+}
+
+.popup-message p {
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.popup-btn {
+    padding: 0.6rem 1.5rem;
+    background-color: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.3s ease;
+}
+
+.popup-btn:hover {
+    background-color: #4f46e5;
+}
+
+#ordersList li {
+    background-color: #f9fafb; /* Tailwind bg-gray-50 */
+    border: 1px solid #e5e7eb; /* Tailwind border-gray-200 */
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    list-style-type: none;
+}
+
+#ordersList li:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#ordersList {
+    padding-left: 0; /* Varsayılan list içi boşluklarını temizler */
+}
