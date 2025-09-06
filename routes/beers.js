@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
-
+//deneme
 // Add beer purchase for customer (Bar staff only)
 router.post('/purchase', auth, async (req, res) => {
     try {
