@@ -682,8 +682,6 @@ document.getElementById('loadMoreUsersBtn').addEventListener('click', function (
 });
 
 function renderUserBox(user) {
-    // Admin kullanıcıya rol değiştirme ve silme işlemi yapılamasın
-    const isAdmin = user.role === 'admin';
     return `
         <div class="bg-white p-4 rounded-lg shadow mb-4">
             <div class="flex items-center justify-between">
@@ -694,16 +692,17 @@ function renderUserBox(user) {
                 </div>
                 <div>
                     <select class="role-select" data-user-id="${user.id}">
-                    <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Müşteri</option>
-                    <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Personel</option>
-                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                </select>
-                ${isAdmin ? '' : `<button class="delete-user bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Sil</button>`}
+                        <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Müşteri</option>
+                        <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Personel</option>
+                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                    </select>
+                    <button class="delete-user bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Sil</button>
                 </div>
             </div>
         </div>
     `;
 }
+
 
 function attachUserEventListeners() {
     document.querySelectorAll('.role-select').forEach(select => {
