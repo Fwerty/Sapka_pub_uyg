@@ -60,10 +60,10 @@ document.getElementById('register').addEventListener('submit', async (e) => {
     const formData = new FormData(e.target);
     const username = formData.get('username');
     const password = formData.get('password');
-    
+
     // Frontend validasyonu
     let validationErrors = [];
-    
+
     if (!username || username.trim() === '') {
         validationErrors.push('Kullanıcı adı boş olamaz');
     } else if (username.length < 3) {
@@ -71,18 +71,18 @@ document.getElementById('register').addEventListener('submit', async (e) => {
     } else if (!/^[a-zA-Z0-9]+$/.test(username)) {
         validationErrors.push('Kullanıcı adı sadece harf ve rakam içermelidir');
     }
-    
+
     if (!password || password.trim() === '') {
         validationErrors.push('Şifre boş olamaz');
     } else if (password.length < 5) {
         validationErrors.push('Şifre en az 5 karakter olmalıdır');
     }
-    
+
     if (validationErrors.length > 0) {
         showDetailedError('Kayıt Formu Hataları', validationErrors);
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
@@ -120,7 +120,7 @@ document.getElementById('register').addEventListener('submit', async (e) => {
 document.getElementById('addBeerForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
-    
+
     try {
         const response = await fetch(`${API_URL}/beers/purchase`, {
             method: 'POST',
@@ -156,6 +156,7 @@ async function fetchUserProfile() {
         });
 
         const user = await response.json();
+        console.log('[fetchUserProfile] API yanıtı:', user);
         if (response.ok) {
             showDashboard(user);
         } else {
@@ -183,19 +184,45 @@ async function fetchTableCount() {
             const data = await res.json();
             currentTableCount = data.tableCount;
         }
-    } catch {}
+    } catch { }
 }
 
 function showDashboard(user) {
+    if (!user || !user.username) {
+        console.log('[showDashboard] Kullanıcı verisi eksik, gösterim yapılmadı:', user);
+        return;
+    }
     loginForm.classList.add('hidden');
     registerForm.classList.add('hidden');
     dashboard.classList.remove('hidden');
     userInfo.classList.remove('hidden');
-    username.textContent = user.username;
     document.getElementById('logoutBtn').style.display = 'block';
 
     const authContainer = document.getElementById('authContainer');
     if (authContainer) authContainer.style.display = 'none';
+
+    // Önce tüm username alanlarını temizle
+    const customerUsernameEl = document.getElementById('customerUsername');
+    if (customerUsernameEl) {
+        customerUsernameEl.textContent = '';
+        console.log('[customerUsername] Temizlendi');
+    } else {
+        console.log('[customerUsername] Alanı bulunamadı!');
+    }
+    const staffUsernameEl = document.getElementById('staffUsername');
+    if (staffUsernameEl) {
+        staffUsernameEl.textContent = '';
+        console.log('[staffUsername] Temizlendi');
+    } else {
+        console.log('[staffUsername] Alanı bulunamadı!');
+    }
+    const adminUsernameEl = document.getElementById('adminUsername');
+    if (adminUsernameEl) {
+        adminUsernameEl.textContent = '';
+        console.log('[adminUsername] Temizlendi');
+    } else {
+        console.log('[adminUsername] Alanı bulunamadı!');
+    }
 
     customerDashboard.classList.add('hidden');
     staffDashboard.classList.add('hidden');
@@ -203,39 +230,26 @@ function showDashboard(user) {
 
     if (user.role === 'customer') {
         customerDashboard.classList.remove('hidden');
+        if (customerUsernameEl) {
+            customerUsernameEl.textContent = user.username;
+            console.log('[customerUsername] Atandı:', user.username);
+        } else {
+            console.log('[customerUsername] Atanamadı, alan bulunamadı!');
+        }
         updateCustomerDashboard();
         showDynamicQRCode(user.username);
-        // MASA SAYISI: her müşteri paneli açılışında güncel değeri çek
         fetchTableCount().then(() => {
             setTableNumberInputLimits();
             setupOrderFormValidation();
         });
-        // Order form submission
-        const orderForm = document.getElementById('orderForm');
-        orderForm.addEventListener('submit', async e => {
-            e.preventDefault();
-            const form = e.target;
-            const data = { tableNumber: form.tableNumber.value, quantity: form.quantity.value };
-            try {
-                const res = await fetch(`${API_URL}/orders`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') },
-                    body: JSON.stringify(data)
-                });
-                const { message, orderId } = await res.json();
-                if (res.ok) {
-                    showSuccess(message);
-                    form.reset();
-                    pollOrderStatus(orderId);
-                } else {
-                    showError(message);
-                }
-            } catch {
-                showError('Sunucu hatası');
-            }
-        });
     } else if (user.role === 'staff') {
         staffDashboard.classList.remove('hidden');
+        if (staffUsernameEl) {
+            staffUsernameEl.textContent = user.username;
+            console.log('[staffUsername] Atandı:', user.username);
+        } else {
+            console.log('[staffUsername] Atanamadı, alan bulunamadı!');
+        }
         clearDynamicQRCode();
         setupStaffQrReader();
         fetchPendingOrders();
@@ -246,6 +260,12 @@ function showDashboard(user) {
         pendingUsersInterval = setInterval(fetchPendingUsers, 5000);
     } else if (user.role === 'admin') {
         adminDashboard.classList.remove('hidden');
+        if (adminUsernameEl) {
+            adminUsernameEl.textContent = user.username;
+            console.log('[adminUsername] Atandı:', user.username);
+        } else {
+            console.log('[adminUsername] Atanamadı, alan bulunamadı!');
+        }
         updateAdminDashboard();
         clearDynamicQRCode();
     }
@@ -255,15 +275,15 @@ function setupStaffQrReader() {
     document.getElementById('qr-reader').innerHTML = '';
     document.getElementById('qrResult').textContent = '';
     if (globalThis.qrScanner) {
-        globalThis.qrScanner.clear().catch(()=>{});
+        globalThis.qrScanner.clear().catch(() => { });
         globalThis.qrScanner = null;
     }
     qrScanLock = false;
     const startBtn = document.getElementById('startQrBtn');
     if (startBtn) {
-        startBtn.onclick = function() {
+        startBtn.onclick = function () {
             if (globalThis.qrScanner) {
-                globalThis.qrScanner.clear().catch(()=>{});
+                globalThis.qrScanner.clear().catch(() => { });
                 globalThis.qrScanner = null;
             }
             qrScanLock = false;
@@ -299,7 +319,7 @@ function setupStaffQrReader() {
                     } catch (err) {
                         showError('Sunucuya bağlanılamadı!');
                     }
-                    qrReader.stop().then(()=>{globalThis.qrScanner=null;});
+                    qrReader.stop().then(() => { globalThis.qrScanner = null; });
                 },
                 errorMessage => {
                     // Hata mesajı gösterme, konsola yaz
@@ -318,7 +338,7 @@ function generateDynamicQR(username) {
     qrContainer.innerHTML = '';
     const now = new Date();
     const minutes = now.getMinutes();
-    const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
+    const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     const qrData = `${username}|${timeStr}`;
     const qr = new QRious({ value: qrData, size: 180 });
     const img = document.createElement('img');
@@ -348,7 +368,7 @@ function clearDynamicQRCode() {
     if (qrRefreshInterval) clearInterval(qrRefreshInterval);
     // Personel panelinde kamera varsa kapat
     if (globalThis.qrScanner) {
-        globalThis.qrScanner.clear().catch(()=>{});
+        globalThis.qrScanner.clear().catch(() => { });
         globalThis.qrScanner = null;
     }
 }
@@ -436,7 +456,7 @@ if (useGiftBtn) useGiftBtn.onclick = handleGiftUse;
 
 const giftBeerBtn = document.getElementById('giftBeerBtn');
 if (giftBeerBtn) {
-    giftBeerBtn.addEventListener('click', async function() {
+    giftBeerBtn.addEventListener('click', async function () {
         const qrCodeContainer = document.getElementById('qrCodeContainer');
         const giftQrCodeContainer = document.getElementById('giftQrCodeContainer');
         // Kullanıcı profilinden e-posta adresini çek
@@ -463,7 +483,7 @@ function showGiftQRCode(username) {
     function generateGiftQR() {
         giftQrCodeContainer.innerHTML = '';
         const now = new Date();
-        const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+        const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
         const qrData = `${username}|hediye|${timeStr}`;
         const qr = new QRious({
             value: qrData,
@@ -507,7 +527,7 @@ const USERS_PAGE_SIZE = 7;
 
 let userSearchQuery = '';
 
-document.getElementById('userSearchInput').addEventListener('input', function(e) {
+document.getElementById('userSearchInput').addEventListener('input', function (e) {
     userSearchQuery = e.target.value.trim().toLowerCase();
     usersShown = USERS_PAGE_SIZE; // Arama yapınca ilk sayfa kadar göster
     renderUsersPage();
@@ -637,7 +657,7 @@ function renderUsersPage() {
     const loadMoreBtn = document.getElementById('loadMoreUsersBtn');
     // Hiyerarşik ve tarihsel sıralama uygula
     let sortedUsers = sortUsersHierarchically(allUsers);
-    
+
     // Arama varsa, eşleşen kullanıcıyı en üste al
     if (userSearchQuery) {
         const matches = sortedUsers.filter(u => u.username.toLowerCase().includes(userSearchQuery));
@@ -656,7 +676,7 @@ function renderUsersPage() {
     attachUserEventListeners();
 }
 
-document.getElementById('loadMoreUsersBtn').addEventListener('click', function() {
+document.getElementById('loadMoreUsersBtn').addEventListener('click', function () {
     usersShown += USERS_PAGE_SIZE;
     renderUsersPage();
 });
@@ -673,14 +693,12 @@ function renderUserBox(user) {
                     ${user.role === 'customer' ? `<p class="text-sm">Bira: ${user.beer_count} | Hediye: ${user.free_beers}</p>` : ''}
                 </div>
                 <div>
-                    ${isAdmin ? '' : `
                     <select class="role-select" data-user-id="${user.id}">
-                        <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Müşteri</option>
-                        <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Personel</option>
-                        <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                    </select>
-                    <button class="delete-user bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Sil</button>
-                    `}
+                    <option value="customer" ${user.role === 'customer' ? 'selected' : ''}>Müşteri</option>
+                    <option value="staff" ${user.role === 'staff' ? 'selected' : ''}>Personel</option>
+                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                </select>
+                ${isAdmin ? '' : `<button class="delete-user bg-red-500 text-white px-3 py-1 rounded" data-user-id="${user.id}">Sil</button>`}
                 </div>
             </div>
         </div>
@@ -692,7 +710,7 @@ function attachUserEventListeners() {
         select.addEventListener('change', async (e) => {
             const userId = e.target.dataset.userId;
             const newRole = e.target.value;
-            
+
             try {
                 const response = await fetch(`${API_URL}/admin/users/${userId}/role`, {
                     method: 'PUT',
@@ -702,7 +720,7 @@ function attachUserEventListeners() {
                     },
                     body: JSON.stringify({ role: newRole })
                 });
-                
+
                 if (response.ok) {
                     showSuccess('Kullanıcı rolü güncellendi');
                 } else {
@@ -719,7 +737,7 @@ function attachUserEventListeners() {
                 return;
             }
             const userId = e.target.dataset.userId;
-            
+
             try {
                 const response = await fetch(`${API_URL}/admin/users/${userId}`, {
                     method: 'DELETE',
@@ -727,7 +745,7 @@ function attachUserEventListeners() {
                         'x-auth-token': localStorage.getItem('token')
                     }
                 });
-                
+
                 if (response.ok) {
                     showSuccess('Kullanıcı silindi');
                     updateAdminDashboard();
@@ -760,7 +778,7 @@ function renderPurchasesPage() {
     }
 }
 
-document.getElementById('loadMorePurchasesBtn').addEventListener('click', function() {
+document.getElementById('loadMorePurchasesBtn').addEventListener('click', function () {
     purchasesShown += PURCHASES_PAGE_SIZE;
     renderPurchasesPage();
 });
@@ -770,7 +788,7 @@ document.querySelectorAll('.role-select').forEach(select => {
     select.addEventListener('change', async (e) => {
         const userId = e.target.dataset.userId;
         const newRole = e.target.value;
-        
+
         try {
             const response = await fetch(`${API_URL}/admin/users/${userId}/role`, {
                 method: 'PUT',
@@ -780,7 +798,7 @@ document.querySelectorAll('.role-select').forEach(select => {
                 },
                 body: JSON.stringify({ role: newRole })
             });
-            
+
             if (response.ok) {
                 showSuccess('Kullanıcı rolü güncellendi');
             } else {
@@ -797,7 +815,7 @@ document.querySelectorAll('.delete-user').forEach(button => {
             return;
         }
         const userId = e.target.dataset.userId;
-        
+
         try {
             const response = await fetch(`${API_URL}/admin/users/${userId}`, {
                 method: 'DELETE',
@@ -805,7 +823,7 @@ document.querySelectorAll('.delete-user').forEach(button => {
                     'x-auth-token': localStorage.getItem('token')
                 }
             });
-            
+
             if (response.ok) {
                 showSuccess('Kullanıcı silindi');
                 updateAdminDashboard();
@@ -900,7 +918,7 @@ function showForm(type) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     showForm('login');
     const regLink = document.getElementById('showRegisterLink');
     const logLink = document.getElementById('showLoginLink');
@@ -908,61 +926,92 @@ document.addEventListener('DOMContentLoaded', function() {
     logLink?.addEventListener('click', e => { e.preventDefault(); showForm('login'); });
 });
 
-// Fetch and display pending orders for staff
+// Uyarı alanı fonksiyonu
+function showInlineWarning(id, message) {
+    let el = document.getElementById(id);
+    if (!el) {
+        el = document.createElement('div');
+        el.id = id;
+        el.className = 'fixed top-4 right-4 bg-yellow-400 text-black p-3 rounded shadow-lg z-50';
+        document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.style.display = 'block';
+}
+function hideInlineWarning(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+}
+
+let ordersErrorCount = 0;
+let usersErrorCount = 0;
+
 async function fetchPendingOrders() {
     try {
         const res = await fetch(`${API_URL}/orders/pending`, {
             headers: { 'x-auth-token': localStorage.getItem('token') }
         });
+        if (!res.ok) {
+            ordersErrorCount++;
+            if (ordersErrorCount === 1 || ordersErrorCount % 3 === 0) {
+                showInlineWarning('ordersWarning', 'Siparişler alınamadı');
+            }
+            return;
+        }
+        hideInlineWarning('ordersWarning');
+        ordersErrorCount = 0;
         const orders = await res.json();
         const list = document.getElementById('ordersList');
         list.innerHTML = '';
-
+        // Sipariş yoksa uyarı gösterme, sadece boş bırak
         orders.forEach(o => {
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow mb-2';
-
             const orderInfo = document.createElement('span');
             orderInfo.textContent = `Masa ${o.table_number} - ${o.username}: ${o.quantity} bira${o.gift ? ' (Hediye Sipariş)' : ''}`;
-
             const buttonContainer = document.createElement('div');
             buttonContainer.className = 'flex gap-2';
-
             const approveBtn = document.createElement('button');
             approveBtn.textContent = 'Onayla';
             approveBtn.className = 'bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600';
             approveBtn.dataset.id = o.id;
             approveBtn.addEventListener('click', () => approveOrder(o.id));
-
             const rejectBtn = document.createElement('button');
             rejectBtn.textContent = 'Reddet';
             rejectBtn.className = 'bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600';
             rejectBtn.dataset.id = o.id;
             rejectBtn.addEventListener('click', () => rejectOrder(o.id));
-
             buttonContainer.appendChild(approveBtn);
             buttonContainer.appendChild(rejectBtn);
-
             li.appendChild(orderInfo);
             li.appendChild(buttonContainer);
             list.appendChild(li);
         });
     } catch {
-        showError('Siparişler alınamadı');
+        ordersErrorCount++;
+        if (ordersErrorCount === 1 || ordersErrorCount % 3 === 0) {
+            showInlineWarning('ordersWarning', 'Siparişler alınamadı');
+        }
     }
 }
 
-// Fetch pending users awaiting approval
 async function fetchPendingUsers() {
     try {
         const res = await fetch(`${API_URL}/auth/pending-users`, { headers: { 'x-auth-token': localStorage.getItem('token') } });
+        if (!res.ok) {
+            usersErrorCount++;
+            if (usersErrorCount === 1 || usersErrorCount % 3 === 0) {
+                showInlineWarning('usersWarning', 'Bekleyen kullanıcılar alınamadı');
+            }
+            return;
+        }
+        hideInlineWarning('usersWarning');
+        usersErrorCount = 0;
         const users = await res.json();
-        
-        // Kullanıcıları created_at tarihine göre sırala (en yeni en üstte)
         users.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
         const list = document.getElementById('pendingUsersList');
         list.innerHTML = '';
+        // Kullanıcı yoksa uyarı gösterme, sadece boş bırak
         users.forEach(u => {
             const li = document.createElement('li');
             li.textContent = u.username;
@@ -981,7 +1030,10 @@ async function fetchPendingUsers() {
             list.appendChild(li);
         });
     } catch {
-        showError('Bekleyen kullanıcılar alınamadı');
+        usersErrorCount++;
+        if (usersErrorCount === 1 || usersErrorCount % 3 === 0) {
+            showInlineWarning('usersWarning', 'Bekleyen kullanıcılar alınamadı');
+        }
     }
 }
 
@@ -1065,18 +1117,18 @@ async function pollOrderStatus(orderId) {
 function showDetailedError(title, errors) {
     const popup = document.createElement('div');
     popup.className = 'popup-message popup-error';
-    
+
     const titleElement = document.createElement('h3');
     titleElement.textContent = title;
     titleElement.style.marginBottom = '1rem';
     titleElement.style.fontWeight = 'bold';
     titleElement.style.color = '#dc2626';
-    
+
     const errorList = document.createElement('ul');
     errorList.style.listStyle = 'none';
     errorList.style.padding = '0';
     errorList.style.margin = '0 0 1.5rem 0';
-    
+
     errors.forEach(error => {
         const li = document.createElement('li');
         li.textContent = '• ' + error;
@@ -1085,12 +1137,12 @@ function showDetailedError(title, errors) {
         li.style.fontSize = '0.9rem';
         errorList.appendChild(li);
     });
-    
+
     const btn = document.createElement('button');
     btn.className = 'popup-btn';
     btn.textContent = 'Tamam';
     btn.addEventListener('click', () => popup.remove());
-    
+
     popup.appendChild(titleElement);
     popup.appendChild(errorList);
     popup.appendChild(btn);
@@ -1127,6 +1179,26 @@ function setupOrderFormValidation() {
             showDetailedError('Sipariş Hatası', errors);
             return;
         }
-        // ... mevcut sipariş gönderme kodu ...
-    }, { once: true }); // Sadece bir kez ekle, tekrar eklenmesin
+        // Siparişi gönder
+        try {
+            const res = await fetch(`${API_URL}/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ tableNumber, quantity })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showSuccess(data.message || 'Siparişiniz alındı');
+                form.reset();
+                if (data.orderId) pollOrderStatus(data.orderId);
+            } else {
+                showError(data.message || 'Sipariş gönderilemedi');
+            }
+        } catch {
+            showError('Sunucu hatası');
+        }
+    });
 }
