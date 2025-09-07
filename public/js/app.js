@@ -220,27 +220,13 @@ async function showDashboard(user) {
     const authContainer = document.getElementById('authContainer');
     if (authContainer) authContainer.style.display = 'none';
 
-    // Önce tüm username alanlarını temizle
-    const customerUsernameEl = document.getElementById('customerUsername');
-    if (customerUsernameEl) {
-        customerUsernameEl.textContent = '';
-        console.log('[customerUsername] Temizlendi');
+    // Set the username in the navigation bar
+    const usernameEl = document.getElementById('username');
+    if (usernameEl) {
+        usernameEl.textContent = user.username;
+        console.log('[username] Set to:', user.username);
     } else {
-        console.log('[customerUsername] Alanı bulunamadı!');
-    }
-    const staffUsernameEl = document.getElementById('staffUsername');
-    if (staffUsernameEl) {
-        staffUsernameEl.textContent = '';
-        console.log('[staffUsername] Temizlendi');
-    } else {
-        console.log('[staffUsername] Alanı bulunamadı!');
-    }
-    const adminUsernameEl = document.getElementById('adminUsername');
-    if (adminUsernameEl) {
-        adminUsernameEl.textContent = '';
-        console.log('[adminUsername] Temizlendi');
-    } else {
-        console.log('[adminUsername] Alanı bulunamadı!');
+        console.log('[username] Element not found in navigation!');
     }
 
     customerDashboard.classList.add('hidden');
@@ -249,12 +235,7 @@ async function showDashboard(user) {
 
     if (user.role === 'customer') {
         customerDashboard.classList.remove('hidden');
-        if (customerUsernameEl) {
-            customerUsernameEl.textContent = user.username;
-            console.log('[customerUsername] Atandı:', user.username);
-        } else {
-            console.log('[customerUsername] Atanamadı, alan bulunamadı!');
-        }
+        // Username is already set in the navigation bar
         updateCustomerDashboard();
         showDynamicQRCode(user.username);
         fetchTableCount().then(() => {
@@ -263,12 +244,7 @@ async function showDashboard(user) {
         });
     } else if (user.role === 'staff') {
         staffDashboard.classList.remove('hidden');
-        if (staffUsernameEl) {
-            staffUsernameEl.textContent = user.username;
-            console.log('[staffUsername] Atandı:', user.username);
-        } else {
-            console.log('[staffUsername] Atanamadı, alan bulunamadı!');
-        }
+        // Username is already set in the navigation bar
         clearDynamicQRCode();
         setupStaffQrReader();
         fetchPendingOrders();
@@ -279,12 +255,7 @@ async function showDashboard(user) {
         pendingUsersInterval = setInterval(fetchPendingUsers, 5000);
     } else if (user.role === 'admin') {
         adminDashboard.classList.remove('hidden');
-        if (adminUsernameEl) {
-            adminUsernameEl.textContent = user.username;
-            console.log('[adminUsername] Atandı:', user.username);
-        } else {
-            console.log('[adminUsername] Atanamadı, alan bulunamadı!');
-        }
+        // Username is already set in the navigation bar
         updateAdminDashboard();
         clearDynamicQRCode();
     }
