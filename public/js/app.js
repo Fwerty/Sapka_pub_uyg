@@ -243,15 +243,25 @@ async function showDashboard(user) {
             setupOrderFormValidation();
         });
     } else if (user.role === 'staff') {
+        // Clear any existing intervals first
+        if (pendingOrdersInterval) clearInterval(pendingOrdersInterval);
+        if (pendingUsersInterval) clearInterval(pendingUsersInterval);
+
+        // Clear the orders list before showing the dashboard
+        const ordersList = document.getElementById('ordersList');
+        if (ordersList) ordersList.innerHTML = '';
+
+        // Show the dashboard and set up components
         staffDashboard.classList.remove('hidden');
-        // Username is already set in the navigation bar
         clearDynamicQRCode();
         setupStaffQrReader();
+
+        // Fetch initial data
         fetchPendingOrders();
         fetchPendingUsers();
-        if (pendingOrdersInterval) clearInterval(pendingOrdersInterval);
+
+        // Set up intervals
         pendingOrdersInterval = setInterval(fetchPendingOrders, 5000);
-        if (pendingUsersInterval) clearInterval(pendingUsersInterval);
         pendingUsersInterval = setInterval(fetchPendingUsers, 5000);
     } else if (user.role === 'admin') {
         adminDashboard.classList.remove('hidden');
@@ -939,8 +949,10 @@ let usersErrorCount = 0;
 async function fetchPendingOrders() {
     try {
         const res = await fetch(`${API_URL}/orders/pending`, {
-            headers: { 'x-auth-token': localStorage.getItem('token') }
+            headers: { 'x-auth-token': localStorage.getItem('token') },
+            cache: 'no-cache' // Prevent browser from caching the response
         });
+        
         if (!res.ok) {
             ordersErrorCount++;
             if (ordersErrorCount === 1 || ordersErrorCount % 3 === 0) {
@@ -948,13 +960,34 @@ async function fetchPendingOrders() {
             }
             return;
         }
+        
         hideInlineWarning('ordersWarning');
         ordersErrorCount = 0;
+        
         const orders = await res.json();
         const list = document.getElementById('ordersList');
+        if (!list) return; // Exit if orders list element doesn't exist
+        
+        // Clear existing orders and add a loading indicator
+        list.innerHTML = '<li class="text-center text-gray-500">Yükleniyor...</li>';
+        
+        // If no orders, show a message and return
+        if (!orders || orders.length === 0) {
+            list.innerHTML = '<li class="text-center text-gray-500">Bekleyen sipariş yok</li>';
+            return;
+        }
+        
+        // Clear the list before adding new orders
         list.innerHTML = '';
-        // Sipariş yoksa uyarı gösterme, sadece boş bırak
+        
+        // Track order IDs to prevent duplicates
+        const orderIds = new Set();
+        
+        // Process each order
         orders.forEach(o => {
+            // Skip if we've already processed this order
+            if (orderIds.has(o.id)) return;
+            orderIds.add(o.id);
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow mb-2';
             const orderInfo = document.createElement('span');
