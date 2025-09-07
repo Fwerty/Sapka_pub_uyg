@@ -46,10 +46,12 @@ router.post('/', [
         }
         const { tableNumber, quantity, gift } = req.body;
 
-        // Insert order and return its ID
+        // Insert order and return its ID ++
         const insertResult = await db.query(
             'INSERT INTO orders (user_id, table_number, quantity, gift) VALUES ($1, $2, $3, $4) RETURNING id',
             [req.user.id, tableNumber, quantity, gift === true || gift === 'true']
+       
+       
         );
         const orderId = insertResult.rows[0].id;
         // Immediately decrement free_beers for gift orders
