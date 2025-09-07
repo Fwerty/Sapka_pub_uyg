@@ -17,6 +17,12 @@ db.query(`CREATE TABLE IF NOT EXISTS orders (
 
 // Add gift column if missing
 db.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift BOOLEAN DEFAULT false`);
+// Ek tanılama için istemci isteği kimliği
+db.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_request_id TEXT`);
+// client_request_id için benzersiz kısıt (NULL'lar hariç)
+// Unique index (NULL değerler birden fazla olabilir, Postgres'te sorun değil)
+db.query(`DROP INDEX IF EXISTS orders_client_request_id_uidx`);
+db.query(`CREATE UNIQUE INDEX IF NOT EXISTS orders_client_request_id_uidx ON orders (client_request_id)`);
 
 // Middleware to check staff or admin
 const checkStaff = async (req, res, next) => {
@@ -44,23 +50,40 @@ router.post('/', [
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array().map(e => e.msg) });
         }
-        const { tableNumber, quantity, gift } = req.body;
+        const { tableNumber, quantity, gift, clientRequestId } = req.body;
+        console.log('[POST /orders] incoming', {
+            userId: req.user?.id, tableNumber, quantity, gift, clientRequestId,
+            at: new Date().toISOString()
+        });
 
-        // Insert order and return its ID ++
+        // Sunucu tarafında CRID üret (gelmediyse)
+        const crid = clientRequestId || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const qty = parseInt(quantity, 10);
+
+        // Tekilleştir: aynı client_request_id ikinci kez insert etmeyecek
         const insertResult = await db.query(
-            'INSERT INTO orders (user_id, table_number, quantity, gift) VALUES ($1, $2, $3, $4) RETURNING id',
-            [req.user.id, tableNumber, quantity, gift === true || gift === 'true']
-       
-       
+            `INSERT INTO orders (user_id, table_number, quantity, gift, client_request_id)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (client_request_id) DO NOTHING
+             RETURNING id`,
+            [req.user.id, tableNumber, qty, gift === true || gift === 'true', crid]
         );
-        const orderId = insertResult.rows[0].id;
+        let orderId;
+        if (insertResult.rows.length > 0) {
+            orderId = insertResult.rows[0].id;
+            console.log('[POST /orders] inserted', { orderId, clientRequestId: crid });
+        } else {
+            const existing = await db.query('SELECT id FROM orders WHERE client_request_id = $1', [crid]);
+            orderId = existing.rows[0]?.id;
+            console.log('[POST /orders] duplicate prevented, existing returned', { orderId, clientRequestId: crid });
+        }
         // Immediately decrement free_beers for gift orders
         if (gift === true || gift === 'true') {
             await db.query('UPDATE users SET free_beers = free_beers - 1 WHERE id = $1', [req.user.id]);
         }
-        res.json({ message: 'Siparişiniz alındı', orderId });
+        res.json({ message: 'Siparişiniz alındı', orderId, clientRequestId: crid });
     } catch (err) {
-        console.error(err);
+        console.error('[POST /orders] error', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -92,28 +115,20 @@ router.get('/:id/status', [
 router.get('/pending', auth, checkStaff, async (req, res) => {
     try {
         const result = await db.query(
-            `SELECT o.id, o.user_id, o.table_number, o.quantity, o.gift, o.created_at, u.username
+            `SELECT o.id, o.user_id, o.table_number, o.quantity, o.gift, o.created_at, o.client_request_id, u.username
              FROM orders o
              JOIN users u ON o.user_id = u.id
              WHERE o.status = 'pending'
              ORDER BY o.created_at`
         );
-
-        // Aynı kullanıcıdan 3 saniye içinde gelen tekrar siparişleri bastır
-        const lastShownByUser = new Map();
-        const filtered = [];
-        for (const row of result.rows) {
-            const createdAt = new Date(row.created_at);
-            const last = lastShownByUser.get(row.user_id);
-            if (!last || (createdAt - last) > 3000) {
-                filtered.push(row);
-                lastShownByUser.set(row.user_id, createdAt);
-            }
+        console.log('[GET /orders/pending] count', result.rows.length);
+        if (result.rows.length) {
+            console.log('[GET /orders/pending] ids', result.rows.map(r => ({ id: r.id, user_id: r.user_id, clientRequestId: r.client_request_id, at: r.created_at })));
         }
-
-        res.json(filtered);
+        res.set('Cache-Control', 'no-store');
+        res.json(result.rows);
     } catch (err) {
-        console.error(err);
+        console.error('[GET /orders/pending] error', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -130,9 +145,13 @@ router.post('/:id/approve', [
             return res.status(400).json({ errors: errors.array().map(e => e.msg) });
         }
         const orderId = req.params.id;
+        console.log('[POST /orders/:id/approve] start', { staffId: req.user?.id, orderId, at: new Date().toISOString() });
         // Get order
         const orderResult = await db.query('SELECT * FROM orders WHERE id = $1 AND status = $2', [orderId, 'pending']);
-        if (orderResult.rows.length === 0) return res.status(404).json({ message: 'Order not found' });
+        if (orderResult.rows.length === 0) {
+            console.warn('[POST /orders/:id/approve] not found/pending', { orderId });
+            return res.status(404).json({ message: 'Order not found' });
+        }
         const order = orderResult.rows[0];
         // Gift order handling
         if (order.gift) {
@@ -164,9 +183,10 @@ router.post('/:id/approve', [
         }
         // Mark order as approved
         await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['approved', orderId]);
+        console.log('[POST /orders/:id/approve] done', { orderId });
         res.json({ message: 'Order approved' });
     } catch (err) {
-        console.error(err);
+        console.error('[POST /orders/:id/approve] error', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -183,14 +203,19 @@ router.post('/:id/reject', [
             return res.status(400).json({ errors: errors.array().map(e => e.msg) });
         }
         const orderId = req.params.id;
+        console.log('[POST /orders/:id/reject] start', { staffId: req.user?.id, orderId, at: new Date().toISOString() });
         const result = await db.query(
             'UPDATE orders SET status = $1 WHERE id = $2 RETURNING id',
             ['rejected', orderId]
         );
-        if (result.rowCount === 0) return res.status(404).json({ message: 'Order not found' });
+        if (result.rowCount === 0) {
+            console.warn('[POST /orders/:id/reject] not found/pending', { orderId });
+            return res.status(404).json({ message: 'Order not found' });
+        }
+        console.log('[POST /orders/:id/reject] done', { orderId });
         res.json({ message: 'Order rejected' });
     } catch (err) {
-        console.error(err);
+        console.error('[POST /orders/:id/reject] error', err);
         res.status(500).json({ message: 'Server error' });
     }
 });

@@ -434,10 +434,12 @@ async function handleGiftUse() {
     const tableNumber = prompt('Masa numarasını girin:');
     if (!tableNumber) return;
     try {
+        const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        console.log('[UI] sending gift order', { tableNumber, clientRequestId });
         const res = await fetch(`${API_URL}/orders`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-auth-token': localStorage.getItem('token') },
-            body: JSON.stringify({ tableNumber, quantity: 1, gift: true })
+            body: JSON.stringify({ tableNumber, quantity: 1, gift: true, clientRequestId })
         });
         const data = await res.json();
         if (res.ok) {
@@ -978,6 +980,7 @@ async function fetchPendingOrders() {
         ordersErrorCount = 0;
         
         const orders = await res.json();
+        console.log('[UI] pending orders received', orders.map(o => ({ id: o.id, user_id: o.user_id, clientRequestId: o.client_request_id, at: o.created_at })));
         console.log(`[fetchPendingOrders] Sunucudan ${orders.length} adet sipariş alındı`);
         
         const list = document.getElementById('ordersList');
@@ -1024,8 +1027,14 @@ async function fetchPendingOrders() {
             
             orderIds.add(o.id);
             console.log(`[fetchPendingOrders] Yeni sipariş eklendi: ${o.id}`);
+            // Aynı ID varsa tekrar ekleme
+            if (document.getElementById(`order-${o.id}`)) {
+                console.log('[fetchPendingOrders] Zaten var, atlandı:', o.id);
+                return;
+            }
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow mb-2';
+            li.id = `order-${o.id}`;
             const orderInfo = document.createElement('span');
             orderInfo.textContent = `Masa ${o.table_number} - ${o.username}: ${o.quantity} bira${o.gift ? ' (Hediye Sipariş)' : ''}`;
             const buttonContainer = document.createElement('div');
@@ -1128,22 +1137,58 @@ async function rejectUser(id) {
 
 // Approve order
 async function approveOrder(id) {
+    const li = document.getElementById(`order-${id}`);
+    if (li) {
+        const buttons = li.querySelectorAll('button');
+        buttons.forEach(b => { b.disabled = true; b.classList.add('opacity-50', 'cursor-not-allowed'); });
+    }
     try {
         const res = await fetch(`${API_URL}/orders/${id}/approve`, { method: 'POST', headers: { 'x-auth-token': localStorage.getItem('token') } });
-        await res.json();
+        const data = await res.json();
+        if (res.ok) {
+            if (li) li.remove();
+        } else {
+            if (li) {
+                const buttons = li.querySelectorAll('button');
+                buttons.forEach(b => { b.disabled = false; b.classList.remove('opacity-50', 'cursor-not-allowed'); });
+            }
+            showInlineWarning('ordersWarning', data.message || 'Sipariş onaylanamadı');
+        }
         fetchPendingOrders();
     } catch {
+        if (li) {
+            const buttons = li.querySelectorAll('button');
+            buttons.forEach(b => { b.disabled = false; b.classList.remove('opacity-50', 'cursor-not-allowed'); });
+        }
         fetchPendingOrders();
     }
 }
 
 // Reject order handler
 async function rejectOrder(id) {
+    const li = document.getElementById(`order-${id}`);
+    if (li) {
+        const buttons = li.querySelectorAll('button');
+        buttons.forEach(b => { b.disabled = true; b.classList.add('opacity-50', 'cursor-not-allowed'); });
+    }
     try {
         const res = await fetch(`${API_URL}/orders/${id}/reject`, { method: 'POST', headers: { 'x-auth-token': localStorage.getItem('token') } });
-        await res.json();
+        const data = await res.json();
+        if (res.ok) {
+            if (li) li.remove();
+        } else {
+            if (li) {
+                const buttons = li.querySelectorAll('button');
+                buttons.forEach(b => { b.disabled = false; b.classList.remove('opacity-50', 'cursor-not-allowed'); });
+            }
+            showInlineWarning('ordersWarning', data.message || 'Sipariş reddedilemedi');
+        }
         fetchPendingOrders();
     } catch {
+        if (li) {
+            const buttons = li.querySelectorAll('button');
+            buttons.forEach(b => { b.disabled = false; b.classList.remove('opacity-50', 'cursor-not-allowed'); });
+        }
         fetchPendingOrders();
     }
 }
@@ -1219,9 +1264,12 @@ function setTableNumberInputLimits() {
 }
 
 // Sipariş formu submit işlemini güncelle
+let orderFormBound = false;
 function setupOrderFormValidation() {
     const orderForm = document.getElementById('orderForm');
     if (!orderForm) return;
+    if (orderFormBound) return; // idempotent bağlama
+    orderFormBound = true;
     orderForm.addEventListener('submit', async e => {
         e.preventDefault();
         const form = e.target;
@@ -1240,24 +1288,35 @@ function setupOrderFormValidation() {
         }
         // Siparişi gönder
         try {
+            // Benzersiz clientRequestId üret
+            const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            console.log('[UI] sending order', { tableNumber, quantity, clientRequestId });
+            // Çoklu tıklamayı engelle
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('opacity-50','cursor-not-allowed'); }
             const res = await fetch(`${API_URL}/orders`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-auth-token': localStorage.getItem('token')
                 },
-                body: JSON.stringify({ tableNumber, quantity })
+                body: JSON.stringify({ tableNumber, quantity, clientRequestId })
             });
             const data = await res.json();
             if (res.ok) {
+                console.log('[UI] order sent ok', { orderId: data.orderId, clientRequestId: data.clientRequestId });
                 showSuccess(data.message || 'Siparişiniz alındı');
                 form.reset();
                 if (data.orderId) pollOrderStatus(data.orderId);
             } else {
+                console.warn('[UI] order send failed', data);
                 showError(data.message || 'Sipariş gönderilemedi');
             }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50','cursor-not-allowed'); }
         } catch {
             showError('Sunucu hatası');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50','cursor-not-allowed'); }
         }
     });
 }
