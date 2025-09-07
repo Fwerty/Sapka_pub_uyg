@@ -947,13 +947,26 @@ let ordersErrorCount = 0;
 let usersErrorCount = 0;
 
 async function fetchPendingOrders() {
+    console.log('[fetchPendingOrders] Siparişler çekiliyor...');
     try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.error('[fetchPendingOrders] Token bulunamadı!');
+            return;
+        }
+
         const res = await fetch(`${API_URL}/orders/pending`, {
-            headers: { 'x-auth-token': localStorage.getItem('token') },
-            cache: 'no-cache' // Prevent browser from caching the response
+            headers: { 
+                'x-auth-token': token,
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            },
+            cache: 'no-store' // Daha güçlü önbellek önleme
         });
         
         if (!res.ok) {
+            console.error(`[fetchPendingOrders] API hatası: ${res.status} - ${res.statusText}`);
             ordersErrorCount++;
             if (ordersErrorCount === 1 || ordersErrorCount % 3 === 0) {
                 showInlineWarning('ordersWarning', 'Siparişler alınamadı');
@@ -965,29 +978,52 @@ async function fetchPendingOrders() {
         ordersErrorCount = 0;
         
         const orders = await res.json();
-        const list = document.getElementById('ordersList');
-        if (!list) return; // Exit if orders list element doesn't exist
+        console.log(`[fetchPendingOrders] Sunucudan ${orders.length} adet sipariş alındı`);
         
-        // Clear existing orders and add a loading indicator
+        const list = document.getElementById('ordersList');
+        if (!list) {
+            console.error('[fetchPendingOrders] Sipariş listesi elementi bulunamadı!');
+            return;
+        }
+        
+        // Mevcut siparişleri temizle
+        console.log('[fetchPendingOrders] Mevcut sipariş listesi temizleniyor...');
         list.innerHTML = '<li class="text-center text-gray-500">Yükleniyor...</li>';
         
-        // If no orders, show a message and return
+        // Eğer sipariş yoksa
         if (!orders || orders.length === 0) {
+            console.log('[fetchPendingOrders] Bekleyen sipariş bulunamadı');
             list.innerHTML = '<li class="text-center text-gray-500">Bekleyen sipariş yok</li>';
             return;
         }
         
-        // Clear the list before adding new orders
+        // Listeyi temizle ve yeni siparişleri ekle
+        console.log(`[fetchPendingOrders] ${orders.length} sipariş işleniyor...`);
         list.innerHTML = '';
         
-        // Track order IDs to prevent duplicates
+        // Tekrar eden siparişleri tespit etmek için
         const orderIds = new Set();
+        let duplicateCount = 0;
         
-        // Process each order
-        orders.forEach(o => {
-            // Skip if we've already processed this order
-            if (orderIds.has(o.id)) return;
+        // Her siparişi işle
+        orders.forEach((o, index) => {
+            console.log(`[fetchPendingOrders] Sipariş #${index + 1}:`, {
+                id: o.id,
+                masa: o.table_number,
+                kullanici: o.username,
+                miktar: o.quantity,
+                tarih: o.created_at || 'Bilinmiyor'
+            });
+            
+            // Eğer bu sipariş daha önce işlendiyse atla
+            if (orderIds.has(o.id)) {
+                console.warn(`[fetchPendingOrders] TEKRAR EDEN SİPARİŞ! ID: ${o.id}, Masa: ${o.table_number}, Kullanıcı: ${o.username}`);
+                duplicateCount++;
+                return;
+            }
+            
             orderIds.add(o.id);
+            console.log(`[fetchPendingOrders] Yeni sipariş eklendi: ${o.id}`);
             const li = document.createElement('li');
             li.className = 'flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow mb-2';
             const orderInfo = document.createElement('span');
