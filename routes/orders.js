@@ -90,13 +90,26 @@ router.get('/:id/status', [
 router.get('/pending', auth, checkStaff, async (req, res) => {
     try {
         const result = await db.query(
-            `SELECT o.id, o.table_number, o.quantity, o.gift, u.username
+            `SELECT o.id, o.user_id, o.table_number, o.quantity, o.gift, o.created_at, u.username
              FROM orders o
              JOIN users u ON o.user_id = u.id
              WHERE o.status = 'pending'
              ORDER BY o.created_at`
         );
-        res.json(result.rows);
+
+        // Aynı kullanıcıdan 3 saniye içinde gelen tekrar siparişleri bastır
+        const lastShownByUser = new Map();
+        const filtered = [];
+        for (const row of result.rows) {
+            const createdAt = new Date(row.created_at);
+            const last = lastShownByUser.get(row.user_id);
+            if (!last || (createdAt - last) > 3000) {
+                filtered.push(row);
+                lastShownByUser.set(row.user_id, createdAt);
+            }
+        }
+
+        res.json(filtered);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
