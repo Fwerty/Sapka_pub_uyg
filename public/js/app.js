@@ -926,6 +926,48 @@ document.addEventListener('DOMContentLoaded', function () {
     const logLink = document.getElementById('showLoginLink');
     regLink?.addEventListener('click', e => { e.preventDefault(); showForm('register'); });
     logLink?.addEventListener('click', e => { e.preventDefault(); showForm('login'); });
+
+    // Register password show/hide
+    const toggleRegisterPassword = document.getElementById('toggleRegisterPassword');
+    const registerPassword = document.getElementById('registerPassword');
+    const iconEye = document.getElementById('icon-eye');
+    const iconEyeOff = document.getElementById('icon-eye-off');
+    if (toggleRegisterPassword && registerPassword) {
+        toggleRegisterPassword.addEventListener('click', () => {
+            const isHidden = registerPassword.getAttribute('type') === 'password';
+            registerPassword.setAttribute('type', isHidden ? 'text' : 'password');
+            if (iconEye && iconEyeOff) {
+                if (isHidden) {
+                    iconEye.classList.add('hidden');
+                    iconEyeOff.classList.remove('hidden');
+                } else {
+                    iconEye.classList.remove('hidden');
+                    iconEyeOff.classList.add('hidden');
+                }
+            }
+        });
+    }
+
+    // Login password show/hide
+    const toggleLoginPassword = document.getElementById('toggleLoginPassword');
+    const loginPassword = document.getElementById('loginPassword');
+    const iconEyeLogin = document.getElementById('icon-eye-login');
+    const iconEyeOffLogin = document.getElementById('icon-eye-off-login');
+    if (toggleLoginPassword && loginPassword) {
+        toggleLoginPassword.addEventListener('click', () => {
+            const isHidden = loginPassword.getAttribute('type') === 'password';
+            loginPassword.setAttribute('type', isHidden ? 'text' : 'password');
+            if (iconEyeLogin && iconEyeOffLogin) {
+                if (isHidden) {
+                    iconEyeLogin.classList.add('hidden');
+                    iconEyeOffLogin.classList.remove('hidden');
+                } else {
+                    iconEyeLogin.classList.remove('hidden');
+                    iconEyeOffLogin.classList.add('hidden');
+                }
+            }
+        });
+    }
 });
 
 // Uyarı alanı fonksiyonu

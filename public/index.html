@@ -34,8 +34,21 @@
                                     class="w-full px-3 py-2 border rounded">
                             </div>
                             <div>
-                                <input type="password" name="password" placeholder="Şifre" required
-                                    class="w-full px-3 py-2 border rounded">
+                                <div class="flex items-center gap-2">
+                                    <input id="registerPassword" type="password" name="password" placeholder="Şifre" required
+                                        class="w-full px-3 py-2 border rounded">
+                                    <button type="button" id="toggleRegisterPassword" class="p-2 bg-gray-200 rounded hover:bg-gray-300" aria-label="Şifreyi göster/gizle">
+                                        <!-- Eye icon -->
+                                        <svg id="icon-eye" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <!-- Eye-off icon -->
+                                        <svg id="icon-eye-off" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.223-3.592m3.111-2.185A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.67 2.881M15 12a3 3 0 00-3-3m0 0a3 3 0 013 3m-3-3L3 21m9-12l9 9" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
                                 Giriş Yap
@@ -57,8 +70,21 @@
                                     class="w-full px-3 py-2 border rounded">
                             </div>
                             <div>
-                                <input type="password" name="password" placeholder="Şifre" required
-                                    class="w-full px-3 py-2 border rounded">
+                                <div class="flex items-center gap-2">
+                                    <input id="loginPassword" type="password" name="password" placeholder="Şifre" required
+                                        class="w-full px-3 py-2 border rounded">
+                                    <button type="button" id="toggleLoginPassword" class="p-2 bg-gray-200 rounded hover:bg-gray-300" aria-label="Şifreyi göster/gizle">
+                                        <!-- Eye icon -->
+                                        <svg id="icon-eye-login" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        <!-- Eye-off icon -->
+                                        <svg id="icon-eye-off-login" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.477 0-8.268-2.943-9.542-7a10.05 10.05 0 012.223-3.592m3.111-2.185A9.956 9.956 0 0112 5c4.477 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.67 2.881M15 12a3 3 0 00-3-3m0 0a3 3 0 013 3m-3-3L3 21m9-12l9 9" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                             <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
                                 Kayıt Ol
