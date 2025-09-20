@@ -1336,13 +1336,17 @@ function setupOrderFormValidation() {
         const form = e.target;
         const tableNumber = parseInt(form.tableNumber.value, 10);
         const quantity = form.quantity.value;
+        const quantityNum = parseInt(quantity, 10);
         let errors = [];
 
         if (isNaN(tableNumber) || tableNumber < 1 || tableNumber > currentTableCount) {
             errors.push(`Masa numarası 1 ile ${currentTableCount} arasında olmalıdır.`);
         }
-        if (!quantity || isNaN(quantity) || quantity < 1) {
+        if (!quantity || isNaN(quantityNum) || quantityNum < 1) {
             errors.push('Geçerli bir bira sayısı giriniz.');
+        }
+        if (!isNaN(quantityNum) && quantityNum > 10) {
+            errors.push('Bir siparişte en fazla 10 bira seçebilirsiniz.');
         }
         if (errors.length > 0) {
             showDetailedError('Sipariş Hatası', errors);
