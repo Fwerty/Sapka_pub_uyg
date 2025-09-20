@@ -5,29 +5,29 @@ const auth = require('../middleware/auth');
 const { body, param, validationResult } = require('express-validator');
 
 // Create orders table if not exists
-db.query(`CREATE TABLE IF NOT EXISTS orders (
+db.query(`CREATE TABLE IF NOT EXISTS schema_sapka_pub.orders (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id),
+    user_id INT REFERENCES schema_sapka_pub.users(id),
     table_number INT NOT NULL,
     quantity INT NOT NULL,
     gift BOOLEAN DEFAULT false,
     status VARCHAR(20) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT NOW()
-)`);
+)`).catch(err => console.log('orders table creation failed:', err.message));
 
 // Add gift column if missing
-db.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS gift BOOLEAN DEFAULT false`);
+db.query(`ALTER TABLE schema_sapka_pub.orders ADD COLUMN IF NOT EXISTS gift BOOLEAN DEFAULT false`).catch(err => console.log('gift column already exists or table not found'));
 // Ek tanılama için istemci isteği kimliği
-db.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_request_id TEXT`);
+db.query(`ALTER TABLE schema_sapka_pub.orders ADD COLUMN IF NOT EXISTS client_request_id TEXT`).catch(err => console.log('client_request_id column already exists or table not found'));
 // client_request_id için benzersiz kısıt (NULL'lar hariç)
 // Unique index (NULL değerler birden fazla olabilir, Postgres'te sorun değil)
-db.query(`DROP INDEX IF EXISTS orders_client_request_id_uidx`);
-db.query(`CREATE UNIQUE INDEX IF NOT EXISTS orders_client_request_id_uidx ON orders (client_request_id)`);
+db.query(`DROP INDEX IF EXISTS schema_sapka_pub.orders_client_request_id_uidx`).catch(err => console.log('index drop failed:', err.message));
+db.query(`CREATE UNIQUE INDEX IF NOT EXISTS schema_sapka_pub.orders_client_request_id_uidx ON schema_sapka_pub.orders (client_request_id)`).catch(err => console.log('index creation failed:', err.message));
 
 // Middleware to check staff or admin
 const checkStaff = async (req, res, next) => {
     try {
-        const user = await db.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+        const user = await db.query('SELECT role FROM schema_sapka_pub.users WHERE id = $1', [req.user.id]);
         if (!['staff', 'admin'].includes(user.rows[0].role)) {
             return res.status(403).json({ message: 'Not authorized' });
         }
@@ -62,7 +62,7 @@ router.post('/', [
 
         // Tekilleştir: aynı client_request_id ikinci kez insert etmeyecek
         const insertResult = await db.query(
-            `INSERT INTO orders (user_id, table_number, quantity, gift, client_request_id)
+            `INSERT INTO schema_sapka_pub.orders (user_id, table_number, quantity, gift, client_request_id)
              VALUES ($1, $2, $3, $4, $5)
              ON CONFLICT (client_request_id) DO NOTHING
              RETURNING id`,
@@ -73,13 +73,13 @@ router.post('/', [
             orderId = insertResult.rows[0].id;
             console.log('[POST /orders] inserted', { orderId, clientRequestId: crid });
         } else {
-            const existing = await db.query('SELECT id FROM orders WHERE client_request_id = $1', [crid]);
+            const existing = await db.query('SELECT id FROM schema_sapka_pub.orders WHERE client_request_id = $1', [crid]);
             orderId = existing.rows[0]?.id;
             console.log('[POST /orders] duplicate prevented, existing returned', { orderId, clientRequestId: crid });
         }
         // Immediately decrement free_beers for gift orders
         if (gift === true || gift === 'true') {
-            await db.query('UPDATE users SET free_beers = free_beers - 1 WHERE id = $1', [req.user.id]);
+            await db.query('UPDATE schema_sapka_pub.users SET free_beers = free_beers - 1 WHERE id = $1', [req.user.id]);
         }
         res.json({ message: 'Siparişiniz alındı', orderId, clientRequestId: crid });
     } catch (err) {
@@ -100,7 +100,7 @@ router.get('/:id/status', [
         }
         const orderId = req.params.id;
         const result = await db.query(
-            'SELECT status FROM orders WHERE id = $1 AND user_id = $2',
+            'SELECT status FROM schema_sapka_pub.orders WHERE id = $1 AND user_id = $2',
             [orderId, req.user.id]
         );
         if (result.rows.length === 0) return res.status(404).json({ message: 'Order not found' });
@@ -116,8 +116,8 @@ router.get('/pending', auth, checkStaff, async (req, res) => {
     try {
         const result = await db.query(
             `SELECT o.id, o.user_id, o.table_number, o.quantity, o.gift, o.created_at, o.client_request_id, u.username
-             FROM orders o
-             JOIN users u ON o.user_id = u.id
+             FROM schema_sapka_pub.orders o
+             JOIN schema_sapka_pub.users u ON o.user_id = u.id
              WHERE o.status = 'pending'
              ORDER BY o.created_at`
         );
@@ -147,7 +147,7 @@ router.post('/:id/approve', [
         const orderId = req.params.id;
         console.log('[POST /orders/:id/approve] start', { staffId: req.user?.id, orderId, at: new Date().toISOString() });
         // Get order
-        const orderResult = await db.query('SELECT * FROM orders WHERE id = $1 AND status = $2', [orderId, 'pending']);
+        const orderResult = await db.query('SELECT * FROM schema_sapka_pub.orders WHERE id = $1 AND status = $2', [orderId, 'pending']);
         if (orderResult.rows.length === 0) {
             console.warn('[POST /orders/:id/approve] not found/pending', { orderId });
             return res.status(404).json({ message: 'Order not found' });
@@ -157,13 +157,13 @@ router.post('/:id/approve', [
         if (order.gift) {
             // Record free beer usage (free_beers already decremented at creation)
             await db.query(
-                'INSERT INTO beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)',
+                'INSERT INTO schema_sapka_pub.beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)',
                 [order.user_id, 1, req.user.id]
             );
         } else {
             // Update user's beer count
             const result = await db.query(
-                'UPDATE users SET beer_count = beer_count + $1 WHERE id = $2 RETURNING beer_count',
+                'UPDATE schema_sapka_pub.users SET beer_count = beer_count + $1 WHERE id = $2 RETURNING beer_count',
                 [order.quantity, order.user_id]
             );
             const beerCount = result.rows[0].beer_count;
@@ -171,18 +171,18 @@ router.post('/:id/approve', [
             const campaignThreshold = await require('../config/settings').getCampaignThreshold();
             if (beerCount >= campaignThreshold) {
                 await db.query(
-                    'UPDATE users SET beer_count = beer_count - $1, free_beers = free_beers + 1 WHERE id = $2',
+                    'UPDATE schema_sapka_pub.users SET beer_count = beer_count - $1, free_beers = free_beers + 1 WHERE id = $2',
                     [campaignThreshold, order.user_id]
                 );
             }
             // Insert purchase record
             await db.query(
-                'INSERT INTO beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)',
+                'INSERT INTO schema_sapka_pub.beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)',
                 [order.user_id, order.quantity, req.user.id]
             );
         }
         // Mark order as approved
-        await db.query('UPDATE orders SET status = $1 WHERE id = $2', ['approved', orderId]);
+        await db.query('UPDATE schema_sapka_pub.orders SET status = $1 WHERE id = $2', ['approved', orderId]);
         console.log('[POST /orders/:id/approve] done', { orderId });
         res.json({ message: 'Order approved' });
     } catch (err) {
@@ -205,7 +205,7 @@ router.post('/:id/reject', [
         const orderId = req.params.id;
         console.log('[POST /orders/:id/reject] start', { staffId: req.user?.id, orderId, at: new Date().toISOString() });
         const result = await db.query(
-            'UPDATE orders SET status = $1 WHERE id = $2 RETURNING id',
+            'UPDATE schema_sapka_pub.orders SET status = $1 WHERE id = $2 RETURNING id',
             ['rejected', orderId]
         );
         if (result.rowCount === 0) {

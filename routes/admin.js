@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 // Admin yetkisi kontrolü
 const checkAdmin = async (req, res, next) => {
     try {
-        const user = await db.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+        const user = await db.query('SELECT role FROM schema_sapka_pub.users WHERE id = $1', [req.user.id]);
         if (user.rows[0].role !== 'admin') {
             return res.status(403).json({ message: 'Admin yetkisi gerekli' });
         }
@@ -23,7 +23,7 @@ const { getCampaignThreshold, setCampaignThreshold, getTableCount, setTableCount
 router.get('/users', auth, checkAdmin, async (req, res) => {
     try {
         const users = await db.query(
-            'SELECT id, username, role, beer_count, free_beers, created_at FROM users ORDER BY created_at DESC'
+            'SELECT id, username, role, beer_count, free_beers, created_at FROM schema_sapka_pub.users ORDER BY created_at DESC'
         );
         res.json(users.rows);
     } catch (err) {
@@ -52,9 +52,9 @@ router.get('/purchases', auth, checkAdmin, async (req, res) => {
                 s.username as staff_name,
                 bp.quantity,
                 bp.purchase_date
-            FROM beer_purchases bp
-            JOIN users u ON bp.user_id = u.id
-            JOIN users s ON bp.staff_id = s.id
+            FROM schema_sapka_pub.beer_purchases bp
+            JOIN schema_sapka_pub.users u ON bp.user_id = u.id
+            JOIN schema_sapka_pub.users s ON bp.staff_id = s.id
             ORDER BY bp.purchase_date DESC`
         );
         res.json(purchases.rows);
@@ -90,7 +90,7 @@ router.put('/users/:id/role', auth, checkAdmin, async (req, res) => {
         }
 
         await db.query(
-            'UPDATE users SET role = $1 WHERE id = $2',
+            'UPDATE schema_sapka_pub.users SET role = $1 WHERE id = $2',
             [role, id]
         );
         res.json({ message: 'Rol güncellendi' });
@@ -104,11 +104,11 @@ router.delete('/users/:id', auth, checkAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         // Delete beer purchase records
-        await db.query('DELETE FROM beer_purchases WHERE user_id = $1', [id]);
+        await db.query('DELETE FROM schema_sapka_pub.beer_purchases WHERE user_id = $1', [id]);
         // Delete orders associated with user to avoid FK constraint
-        await db.query('DELETE FROM orders WHERE user_id = $1', [id]);
+        await db.query('DELETE FROM schema_sapka_pub.orders WHERE user_id = $1', [id]);
         // Delete user
-        await db.query('DELETE FROM users WHERE id = $1', [id]);
+        await db.query('DELETE FROM schema_sapka_pub.users WHERE id = $1', [id]);
         res.json({ message: 'Kullanıcı silindi' });
     } catch (err) {
         res.status(500).json({ message: 'Sunucu hatası' });

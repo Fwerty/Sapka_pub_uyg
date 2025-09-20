@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 router.get('/profile', auth, async (req, res) => {
     try {
         const user = await db.query(
-            'SELECT id, username, role, beer_count, free_beers FROM users WHERE id = $1',
+            'SELECT id, username, role, beer_count, free_beers FROM schema_sapka_pub.users WHERE id = $1',
             [req.user.id]
         );
 
@@ -22,7 +22,7 @@ router.get('/profile', auth, async (req, res) => {
 router.get('/beer-history', auth, async (req, res) => {
     try {
         const history = await db.query(
-            'SELECT * FROM beer_purchases WHERE user_id = $1 ORDER BY purchase_date DESC',
+            'SELECT * FROM schema_sapka_pub.beer_purchases WHERE user_id = $1 ORDER BY purchase_date DESC',
             [req.user.id]
         );
 
@@ -38,7 +38,7 @@ router.get('/all', auth, async (req, res) => {
     try {
         // Check if admin
         const user = await db.query(
-            'SELECT role FROM users WHERE id = $1',
+            'SELECT role FROM schema_sapka_pub.users WHERE id = $1',
             [req.user.id]
         );
 
@@ -47,7 +47,7 @@ router.get('/all', auth, async (req, res) => {
         }
 
         const users = await db.query(
-            'SELECT id, username, role, beer_count FROM users'
+            'SELECT id, username, role, beer_count FROM schema_sapka_pub.users'
         );
 
         res.json(users.rows);

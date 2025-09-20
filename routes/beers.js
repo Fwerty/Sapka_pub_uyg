@@ -10,7 +10,7 @@ router.post('/purchase', auth, async (req, res) => {
 
         // Check if staff member
         const staff = await db.query(
-            'SELECT role FROM users WHERE id = $1',
+            'SELECT role FROM schema_sapka_pub.users WHERE id = $1',
             [req.user.id]
         );
 
@@ -21,7 +21,7 @@ router.post('/purchase', auth, async (req, res) => {
         console.log('Purchase endpoint hit for user', customerId, 'quantity', quantity);
         // Add purchase and update customer's beer count
         const result = await db.query(
-            'UPDATE users SET beer_count = beer_count + $1 WHERE id = $2 RETURNING beer_count',
+            'UPDATE schema_sapka_pub.users SET beer_count = beer_count + $1 WHERE id = $2 RETURNING beer_count',
             [quantity, customerId]
         );
 
@@ -32,7 +32,7 @@ router.post('/purchase', auth, async (req, res) => {
         const campaignThreshold = await require('../config/settings').getCampaignThreshold();
         if (beerCount >= campaignThreshold) {
             await db.query(
-                'UPDATE users SET beer_count = beer_count - $1, free_beers = free_beers + 1 WHERE id = $2',
+                'UPDATE schema_sapka_pub.users SET beer_count = beer_count - $1, free_beers = free_beers + 1 WHERE id = $2',
                 [campaignThreshold, customerId]
             );
             freeBeerEarned = true;
@@ -40,10 +40,10 @@ router.post('/purchase', auth, async (req, res) => {
 
         console.log('Inserting beer_purchases record for user', customerId, 'quantity', quantity);
         // Record the purchase
-        await db.query('INSERT INTO beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)', [customerId, quantity, req.user.id]);
+        await db.query('INSERT INTO schema_sapka_pub.beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)', [customerId, quantity, req.user.id]);
         console.log('Purchase recorded successfully for user', customerId);
         // Debug: check total purchases rows
-        const totalRowsAfter = await db.query('SELECT COUNT(*)::int AS count FROM beer_purchases');
+        const totalRowsAfter = await db.query('SELECT COUNT(*)::int AS count FROM schema_sapka_pub.beer_purchases');
         console.log('Total beer_purchases rows after purchase:', totalRowsAfter.rows[0].count);
 
         res.json({
@@ -65,7 +65,7 @@ router.post('/scan', auth, async (req, res) => {
             return res.status(400).json({ message: 'Geçersiz QR kodu' });
         }
         // Sadece staff veya admin yetkisi
-        const staff = await db.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+        const staff = await db.query('SELECT role FROM schema_sapka_pub.users WHERE id = $1', [req.user.id]);
         if (!['staff', 'admin'].includes(staff.rows[0].role)) {
             return res.status(403).json({ message: 'Yetkisiz' });
         }
@@ -77,7 +77,7 @@ router.post('/scan', auth, async (req, res) => {
                 return res.status(400).json({ message: 'Geçersiz hediye QR kodu' });
             }
             // Kullanıcıyı bul
-            const userResult = await db.query('SELECT id, beer_count FROM users WHERE username = $1', [username]);
+            const userResult = await db.query('SELECT id, beer_count FROM schema_sapka_pub.users WHERE username = $1', [username]);
             if (userResult.rows.length === 0) {
                 return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
             }
@@ -85,7 +85,7 @@ router.post('/scan', auth, async (req, res) => {
             const beerCount = userResult.rows[0].beer_count;
             // Hediye QR kodu okutulduğunda beer_count tam 10 veya 11 ise sıfırla (buton sonrası hemen okutulursa 10, bir artırılmışsa 11 olabilir)
             if (beerCount === 10 || beerCount === 11) {
-                await db.query('UPDATE users SET beer_count = 0, free_beers = free_beers + 1 WHERE id = $1', [userId]);
+                await db.query('UPDATE schema_sapka_pub.users SET beer_count = 0, free_beers = free_beers + 1 WHERE id = $1', [userId]);
                 res.json({ message: 'Müşteri hediye bira kazandı!', userId, gift: true });
             } else {
                 res.status(400).json({ message: 'Hediye QR kodu sadece 10 veya 11. birada okutulabilir!' });
@@ -111,19 +111,19 @@ router.post('/scan', auth, async (req, res) => {
             return res.status(400).json({ message: 'Geçersiz QR kodu' });
         }
         // Kullanıcıyı bul
-        const userResult = await db.query('SELECT id, beer_count FROM users WHERE username = $1', [username]);
+        const userResult = await db.query('SELECT id, beer_count FROM schema_sapka_pub.users WHERE username = $1', [username]);
         if (userResult.rows.length === 0) {
             return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
         }
         const userId = userResult.rows[0].id;
         // Bira sayısını arttır
-        await db.query('UPDATE users SET beer_count = beer_count + 1 WHERE id = $1', [userId]);
+        await db.query('UPDATE schema_sapka_pub.users SET beer_count = beer_count + 1 WHERE id = $1', [userId]);
         console.log('Scan endpoint insert for user', userId);
         // Satın alım kaydı ekle
-        await db.query('INSERT INTO beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)', [userId, 1, req.user.id]);
+        await db.query('INSERT INTO schema_sapka_pub.beer_purchases (user_id, quantity, staff_id) VALUES ($1, $2, $3)', [userId, 1, req.user.id]);
         console.log('Scan recorded successfully for user', userId);
         // Debug: check total purchases rows after scan
-        const totalRowsScan = await db.query('SELECT COUNT(*)::int AS count FROM beer_purchases');
+        const totalRowsScan = await db.query('SELECT COUNT(*)::int AS count FROM schema_sapka_pub.beer_purchases');
         console.log('Total beer_purchases rows after scan:', totalRowsScan.rows[0].count);
         res.json({ message: 'Bira eklendi', userId });
     } catch (err) {
@@ -137,7 +137,7 @@ router.get('/stats', auth, async (req, res) => {
     try {
         // Check if admin
         const user = await db.query(
-            'SELECT role FROM users WHERE id = $1',
+            'SELECT role FROM schema_sapka_pub.users WHERE id = $1',
             [req.user.id]
         );
 
@@ -147,17 +147,17 @@ router.get('/stats', auth, async (req, res) => {
 
         // Get total beers sold
         const totalBeers = await db.query(
-            'SELECT SUM(quantity) as total FROM beer_purchases'
+            'SELECT SUM(quantity) as total FROM schema_sapka_pub.beer_purchases'
         );
 
         // Get today's beers sold
         const todayBeers = await db.query(
-            "SELECT COALESCE(SUM(quantity),0) as total FROM beer_purchases WHERE DATE(purchase_date) = CURRENT_DATE"
+            "SELECT COALESCE(SUM(quantity),0) as total FROM schema_sapka_pub.beer_purchases WHERE DATE(purchase_date) = CURRENT_DATE"
         );
 
         // Get top customers
         const topCustomers = await db.query(
-            'SELECT u.username, SUM(bp.quantity) as total_beers FROM users u JOIN beer_purchases bp ON u.id = bp.user_id GROUP BY u.id, u.username ORDER BY total_beers DESC LIMIT 5'
+            'SELECT u.username, SUM(bp.quantity) as total_beers FROM schema_sapka_pub.users u JOIN schema_sapka_pub.beer_purchases bp ON u.id = bp.user_id GROUP BY u.id, u.username ORDER BY total_beers DESC LIMIT 5'
         );
 
         res.json({
