@@ -976,7 +976,7 @@ function showInlineWarning(id, message) {
     if (!el) {
         el = document.createElement('div');
         el.id = id;
-        el.className = 'fixed top-4 right-4 bg-yellow-400 text-black p-3 rounded shadow-lg z-50';
+        el.className = 'fixed top-20 right-4 bg-yellow-400 text-black p-3 rounded shadow-lg z-40';
         document.body.appendChild(el);
     }
     el.textContent = message;
