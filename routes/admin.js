@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
 
-// Admin yetkisi kontrolü
+// Admin yetkisi kontrolü ..
 const checkAdmin = async (req, res, next) => {
     try {
         const user = await db.query('SELECT role FROM schema_sapka_pub.users WHERE id = $1', [req.user.id]);
