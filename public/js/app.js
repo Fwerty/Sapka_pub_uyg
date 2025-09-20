@@ -1318,6 +1318,7 @@ function setupOrderFormValidation() {
         const tableNumber = parseInt(form.tableNumber.value, 10);
         const quantity = form.quantity.value;
         let errors = [];
+
         if (isNaN(tableNumber) || tableNumber < 1 || tableNumber > currentTableCount) {
             errors.push(`Masa numarası 1 ile ${currentTableCount} arasında olmalıdır.`);
         }
@@ -1328,7 +1329,22 @@ function setupOrderFormValidation() {
             showDetailedError('Sipariş Hatası', errors);
             return;
         }
-        // Siparişi gönder
+
+        // Hız sınırı kontrolü: Son 10 dakikada en fazla 5 sipariş
+        const now = Date.now();
+        let orderTimes = [];
+        try {
+            orderTimes = JSON.parse(localStorage.getItem('orderTimes') || '[]');
+        } catch (err) {
+            orderTimes = [];
+        }
+        // Sadece son 10 dakikadaki kayıtları tut
+        orderTimes = orderTimes.filter(t => typeof t === 'number' && (now - t) < (10 * 60 * 1000));
+        if (orderTimes.length >= 5) {
+            showError('Son 10 dakika içinde en fazla 5 sipariş verebilirsiniz. Lütfen daha sonra tekrar deneyin.');
+            return;
+        }
+
         try {
             // Benzersiz clientRequestId üret
             const clientRequestId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1349,13 +1365,16 @@ function setupOrderFormValidation() {
                 console.log('[UI] order sent ok', { orderId: data.orderId, clientRequestId: data.clientRequestId });
                 showSuccess(data.message || 'Siparişiniz alındı');
                 form.reset();
+                // Başarılı siparişi zaman damgasıyla kaydet
+                orderTimes.push(now);
+                localStorage.setItem('orderTimes', JSON.stringify(orderTimes));
                 if (data.orderId) pollOrderStatus(data.orderId);
             } else {
                 console.warn('[UI] order send failed', data);
                 showError(data.message || 'Sipariş gönderilemedi');
             }
             if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50','cursor-not-allowed'); }
-        } catch {
+        } catch (err) {
             showError('Sunucu hatası');
             const submitBtn = form.querySelector('button[type="submit"]');
             if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('opacity-50','cursor-not-allowed'); }
