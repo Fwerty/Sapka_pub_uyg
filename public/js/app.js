@@ -83,6 +83,13 @@ document.getElementById('register').addEventListener('submit', async (e) => {
         return;
     }
 
+    // Kullanım Şartları onayı zorunlu
+    const tosCheckbox = document.getElementById('tos');
+    if (!tosCheckbox || !tosCheckbox.checked) {
+        showDetailedError('Kayıt Formu Hatası', ['Kayıt olmak için Kullanım Şartları’nı kabul etmelisiniz.']);
+        return;
+    }
+
     try {
         const response = await fetch(`${API_URL}/auth/register`, {
             method: 'POST',
@@ -926,6 +933,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const logLink = document.getElementById('showLoginLink');
     regLink?.addEventListener('click', e => { e.preventDefault(); showForm('register'); });
     logLink?.addEventListener('click', e => { e.preventDefault(); showForm('login'); });
+
+    // Terms modal open/close
+    const openTermsLink = document.getElementById('openTermsLink');
+    const termsModal = document.getElementById('termsModal');
+    const closeTermsBtn = document.getElementById('closeTermsBtn');
+    const termsOkBtn = document.getElementById('termsOkBtn');
+    const openTerms = (e) => { e?.preventDefault?.(); if (termsModal) termsModal.classList.remove('hidden'); };
+    const closeTerms = (e) => { e?.preventDefault?.(); if (termsModal) termsModal.classList.add('hidden'); };
+    if (openTermsLink) openTermsLink.addEventListener('click', openTerms);
+    if (closeTermsBtn) closeTermsBtn.addEventListener('click', closeTerms);
+    if (termsOkBtn) termsOkBtn.addEventListener('click', closeTerms);
+    if (termsModal) termsModal.addEventListener('click', (e) => { if (e.target === termsModal) closeTerms(); });
 
     // Register password show/hide
     const toggleRegisterPassword = document.getElementById('toggleRegisterPassword');
